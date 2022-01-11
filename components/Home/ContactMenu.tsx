@@ -6,7 +6,7 @@ interface Props {}
 const ContactMenu = (props: Props) => {
   return (
     <View>
-      <Text>ContactMenu</Text>
+      <Text></Text>
     </View>
   );
 };

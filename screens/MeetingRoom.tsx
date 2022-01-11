@@ -3,27 +3,28 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
+  Modal,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from "react-native";
 import StartMeeting from "../components/Meeting/StartMeeting";
 import { io } from "socket.io-client";
 import { Camera } from "expo-camera";
-import { FontAwesome, FontAwesome5 } from "@expo/vector-icons";
+import { FontAwesome, FontAwesome5, Ionicons } from "@expo/vector-icons";
+import ChatScreen from "../components/Meeting/ChatScreen";
 
 interface Props {}
 
-// let socket: undefined;
+let socket: any;
 
 const MeetingRoom = (props: Props) => {
-  let socket = io("http://f773-85-100-199-40.ngrok.io");
-
   const [name, setName] = useState();
   const [roomId, setRoomId] = useState();
-  const [activeUsers, setActiveUsers] = useState();
+  const [activeUsers, setActiveUsers] = useState([]);
   const [startCamera, setStartCamera] = useState(false);
   const [microphoneStatus, setMicrophoneStatus] = useState<boolean>(true);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const playCamera = async () => {
     const { status } = await Camera.requestCameraPermissionsAsync();
@@ -40,23 +41,66 @@ const MeetingRoom = (props: Props) => {
   };
 
   useEffect(() => {
-    socket = socket.on("connection", () => {
+    socket = io("http://6ebd-85-100-199-40.ngrok.io");
+
+    socket.on("connection", () => {
       console.log("connected");
     });
     socket.on("all-users", (users: any) => {
-      console.log("active users", users);
       setActiveUsers(users);
     });
-    return () => {
-      socket.disconnect();
-    };
   }, []);
+
+  useEffect(() => {
+    setActiveUsers(activeUsers.filter((user: any) => user.username != name));
+  }, [name]);
 
   return (
     <View style={styles.container}>
       {startCamera ? (
         <Fragment>
-          <Camera type={"front"} style={{ width: "100%", flex: 1 }}></Camera>
+          <Modal
+            animationType="slide"
+            transparent={false}
+            presentationStyle="fullScreen"
+            visible={modalVisible}
+            onRequestClose={() => {
+              setModalVisible(!modalVisible);
+            }}
+          >
+            <ChatScreen onSetModalVisible={setModalVisible} />
+          </Modal>
+          <ScrollView>
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                flexWrap: "wrap",
+                margin: 10,
+                flexDirection: "row",
+              }}
+            >
+              <Camera
+                type={"front"}
+                style={{
+                  width: activeUsers.length === 1 ? "100%" : 200,
+                  height: activeUsers.length === 1 ? "100%" : 200,
+                }}
+              ></Camera>
+              {activeUsers
+                .filter(
+                  (user: any) =>
+                    // console.log("user -----", user.userName, "-name-", name)
+                    user.userName !== name
+                )
+                .map((user: any, index: number) => (
+                  <View key={index} style={styles.userContainer}>
+                    <Text style={styles.userText}>{user.userName}</Text>
+                  </View>
+                ))}
+            </View>
+          </ScrollView>
           <View style={styles.menu}>
             <TouchableOpacity
               style={styles.tile}
@@ -84,6 +128,13 @@ const MeetingRoom = (props: Props) => {
             <TouchableOpacity style={styles.tile}>
               <FontAwesome5 name="users" size={24} color="#efefef" />
               <Text style={styles.textTile}>Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tile}
+              onPress={() => setModalVisible(true)}
+            >
+              <Ionicons name="chatbox" size={24} color="#efefef" />
+              <Text style={styles.textTile}>Chat</Text>
             </TouchableOpacity>
           </View>
         </Fragment>
@@ -127,6 +178,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
+    backgroundColor: "#262626",
   },
   tile: {
     justifyContent: "center",
@@ -136,6 +188,17 @@ const styles = StyleSheet.create({
   textTile: {
     color: "#efefef",
     marginTop: 10,
+  },
+  userContainer: {
+    borderColor: "gray",
+    borderWidth: 1,
+    width: 200,
+    height: 200,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  userText: {
+    color: "#efefef",
   },
 });
 
